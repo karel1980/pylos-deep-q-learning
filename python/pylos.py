@@ -39,28 +39,22 @@ class Pylos:
 
     def move_from_reserve(self, to_position, retractions=[]):
         if self.reserve[self.current_player] == 0:
-            print("out of balls")
             return False
 
         if not self.can_place_ball_at(to_position):
-            print("cannot place ball at target")
             return False
 
         for r in retractions:
             if not self.valid_position(r):
-                print("retractions invalid")
                 return False
 
         max_retractions = 2 if self.part_of_square(to_position, self.current_player) else 0
         if len(retractions) > max_retractions:
-            print("not allowed to retract")
             return False
 
-        print("continuing with retractions", retractions, self.render())
         if not self.retractions_valid(to_position, retractions):
             return False
 
-        print("retractions were valid")
         self.reserve[self.current_player] += len(retractions) - 1
         self._set(to_position, self.current_player)
         for r in retractions:
@@ -74,7 +68,6 @@ class Pylos:
         if self._get(position) != self.current_player:
             return False
 
-        print("is_supporting_ball", position, self.is_supporting_ball(position), self.render())
         return not self.is_supporting_ball(position)
 
     def _get(self, position):
@@ -83,26 +76,20 @@ class Pylos:
 
     def move_up(self, from_position, to_position, retractions=[]):
         if not self.has_current_player_ball_at(from_position):
-            print("from position not occupied by current player")
             return False
 
         if self.is_supporting_ball(from_position):
-            print("from position is supporting, cannot be moved")
             return False
 
         self._clear(from_position)
         self.reserve[self.current_player] += 1
 
-        print("moved to reserve and resuming normally", self.render())
         success = self.move_from_reserve(to_position, retractions)
 
         if not success:
-            print("normal resume failed")
             self._set(from_position, self.current_player)
             self.reserve[self.current_player] -= 1
             return False
-
-        print("resumed normally")
 
         return True
 
@@ -111,11 +98,9 @@ class Pylos:
 
     def can_place_ball_at(self, to_position):
         if not self.is_free_position(to_position):
-            print ("to_position is not free")
             return False
 
         if not self.support_complete(to_position):
-            print ("to_position is not supported")
             return False
 
         return True

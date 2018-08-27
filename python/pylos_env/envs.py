@@ -11,7 +11,7 @@ class PylosEnv(gym.Env):
     def __init__(self):
         self.pylos = Pylos()
         self.done = False
-        
+
         self.reset()
         # discrete 1 = which ball to move (0-29 = from one of the board positions, 30 = from the player's reserve)
         # discrete 2 = where to move the ball
@@ -24,12 +24,12 @@ class PylosEnv(gym.Env):
     def state_from_pylos(self):
         state = dict()
         state['current_player'] = self.pylos.current_player
-        state['board'] = np.zeros((30, 2))
+        state['board'] = np.zeros((30, 3))
         board_row = 0
         for layer in self.pylos.layers:
             for row in layer:
                 for col in row:
-                    if col != None: state['board'][board_row][col] = 1
+                    if col != None: state['board'][board_row][col + 1] = 1
                     board_row += 1
 
         return state

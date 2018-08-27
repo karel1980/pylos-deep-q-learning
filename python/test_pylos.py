@@ -280,3 +280,11 @@ def test_render():
     pylos.move_from_reserve((0, 0, 0))
 
     assert pylos.render() == "0.../..../..../....#.../.../...#../..#."
+
+
+def test_invalid_move_put_on_top():
+    pylos = Pylos()
+
+    success = pylos.move_from_reserve((3, 0, 0))
+
+    assert not success
