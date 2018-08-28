@@ -19,7 +19,7 @@ class Location:
     def __eq__(self, other):
         if other is None:
             return False
-        return self.layer, self.row, self.col == other.layer, other.row, other.col
+        return (self.layer, self.row, self.col) == (other.layer, other.row, other.col)
 
     def __iter__(self):
         return [self.layer, self.row, self.col].__iter__()
@@ -115,6 +115,7 @@ class Pylos:
         return next(filter(lambda location: self.is_valid_source(location), self.all_locations()))
 
     def generate_valid_target(self):
+        print("TTT", list(self.all_locations()))
         return next(filter(lambda location: self.is_valid_target(location), self.all_locations()))
 
     def all_locations(self):
@@ -148,7 +149,8 @@ class Pylos:
         return location
 
     def is_valid_retract(self, location):
-        return self._get(location) == self.current_player and self.allow_retractions and not self.is_supporting_ball(location)
+        return self._get(location) == self.current_player and self.allow_retractions and not self.is_supporting_ball(
+            location)
 
     def is_valid_source(self, from_location):
         if from_location is None and self.reserve[self.current_player] > 0:
@@ -163,10 +165,8 @@ class Pylos:
 
     def is_valid_target(self, target):
         if self.actions.source == target:
+            print("target", target, "is not valid")
             return False
-
-        if self.actions.source is None:
-            return self.can_place_ball_at(target)
 
         return self.can_place_ball_at(target)
 
@@ -177,6 +177,10 @@ class Pylos:
 
     def play_turn(self, source, target, retract1, retract2):
         print("playing turn", source, target, retract1, retract2)
+        source = None if source is None else Location(source[0], source[1], source[2])
+        target = None if target is None else Location(target[0], target[1], target[2])
+        retract1 = None if retract1 is None else Location(retract1[0], retract1[1], retract1[2])
+        retract2 = None if retract2 is None else Location(retract2[0], retract2[1], retract2[2])
         actual_source = self.move(source)
         actual_target = self.move(target)
         actual_retract1 = self.move(retract1)
@@ -196,10 +200,10 @@ class Pylos:
         layer, row, col = location
         return self.layers[layer][row][col]
 
-    def move_up(self, from_location, to_location, retractions=[]):
+    def move_up(self, source, target, retractions=[]):
         r1 = None if len(retractions) < 1 else retractions[0]
         r2 = None if len(retractions) < 2 else retractions[1]
-        return self.play_turn(from_location, to_location, r1, r2)
+        return self.play_turn(source, target, r1, r2)
 
     def has_current_player_ball_at(self, location):
         return self._get(location) == self.current_player
@@ -335,10 +339,3 @@ class Pylos:
         for location in self.get_all_locations():
             if self.can_place_ball_at(location):
                 return True
-
-    def get_moveup_locations(self, from_location):
-        if not self.is_valid_source(from_location):
-            return []
-
-        return list(filter(lambda to_location: self.is_valid_target(from_location, to_location),
-                           self.get_all_locations()))

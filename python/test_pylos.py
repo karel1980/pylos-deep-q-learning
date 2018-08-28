@@ -172,41 +172,26 @@ def test_valid_moveup_with_1_valid_retraction():
     assert game.render() == "0101/0101/0101/.101#.01/001/..1#../..#."
 
 
-#
-#
-# def test_valid_moveup_with_1_invalid_retraction_blocked_ball():
-#     pylos = setup_moveup_scenario()
-#
-#     success = game.move_up((0, 3, 0), (1, 0, 0), [(0, 0, 0)])
-#
-#     assert success == False
-#
-#
-# def test_valid_moveup_with_1_invalid_retraction_opponent_ball():
-#     pylos = setup_moveup_scenario()
-#
-#     success = game.move_up((0, 3, 0), (1, 0, 0), [(0, 3, 1)])
-#
-#     assert success == False
-#     assert game.render() == "0101/0101/0101/0101#.01/001/..1#../..#."
-#
-#
-# def test_get_moveup_locations():
-#     game = Pylos()
-#
-#     fill_layer(game, 0)
-#
-#     actual = list(game.get_moveup_locations((0, 0, 0)))
-#
-#     print(actual)
-#
-#     assert actual == [
-#         (1, 0, 1), (1, 0, 2),
-#         (1, 1, 0), (1, 1, 1), (1, 1, 2),
-#         (1, 2, 0), (1, 2, 1), (1, 2, 2),
-#     ]
-#
-#
+
+
+def test_valid_moveup_with_1_invalid_retraction_blocked_ball():
+    game = setup_moveup_scenario()
+
+    success = game.move_up((0, 3, 0), (1, 0, 0), [(0, 0, 0)])
+
+    assert success == False
+
+def test_valid_moveup_with_1_invalid_retraction_opponent_ball():
+    game = setup_moveup_scenario()
+
+    print (game.render())
+    success = game.move_up((0, 3, 0), (1, 0, 0), [(0, 3, 1)])
+    print (game.render())
+
+    assert success == False
+    assert game.render() == "0101/0101/0101/.101#001/001/..1#../..#."
+
+
 def setup_moveup_scenario():
     game = Pylos()
 
@@ -226,16 +211,13 @@ def setup_moveup_scenario():
     return game
 
 
-#
-#
-# def test_layer0_invalid_move_already_occupied():
-#     game = Pylos()
-#     assert game.move_from_reserve((0, 1, 2)) == True
-#     assert game.move_from_reserve((0, 1, 2)) == False
-#     assert game.layers[0] == [[None, None, None, None], [None, None, 0, None], [None, None, None, None],
-#                                [None, None, None, None]]
-#     assert game.current_player == 1
-#
+def test_layer0_invalid_move_already_occupied():
+    game = Pylos()
+    assert game.move_from_reserve((0, 1, 2)) == True
+    assert game.move_from_reserve((0, 1, 2)) == False
+    assert game.layers[0] == [[1, None, None, None], [None, None, 0, None], [None, None, None, None], [None, None, None, None]]
+    assert game.current_player == 0
+
 #
 # def test_layer1_valid_move():
 #     game = Pylos()
