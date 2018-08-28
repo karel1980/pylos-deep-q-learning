@@ -23,6 +23,7 @@ def test_from_location_valid():
     assert game.reserve == [15, 15]
     assert game.current_player == 0
 
+
 # TODO: test alternative reasons for invalid moves
 
 def test_from_location_invalid_fallback_to_None():
@@ -45,6 +46,7 @@ def test_target_location_valid():
 
     assert game.phase == pylos.PHASE_RETRACT1
     assert game.actions == Actions(None, Location(0, 0, 0), None, None)
+    print(game.render())
     assert game.render() == "0.../..../..../....#.../.../...#../..#."
     assert game.reserve == [14, 15]
     assert game.current_player == 0
@@ -90,6 +92,7 @@ def test_retract1_invalid():
     assert game.reserve == [14, 15]
     assert game.current_player == 0
 
+
 def test_retract2_valid():
     game = pylos.Pylos()
     game.move(None)
@@ -103,6 +106,7 @@ def test_retract2_valid():
     assert game.render() == "0.../..../..../....#.../.../...#../..#."
     assert game.reserve == [14, 15]
     assert game.current_player == 1
+
 
 def test_retract2_invalid():
     game = pylos.Pylos()
@@ -118,6 +122,7 @@ def test_retract2_invalid():
     assert game.reserve == [14, 15]
     assert game.current_player == 1
 
+
 def test_layer0_valid_move():
     game = Pylos()
 
@@ -127,6 +132,7 @@ def test_layer0_valid_move():
     assert game.render() == "..../..0./..../....#.../.../...#../..#."
     assert game.current_player == 1
     assert game.reserve == [14, 15]
+
 
 def test_valid_upmove():
     game = Pylos()
@@ -146,22 +152,26 @@ def test_valid_upmove():
     assert game.render() == "00../10../..../....#1../.../...#../..#."
 
 
-# def test_valid_moveup_with_0_retraction():
-#     pylos = setup_moveup_scenario()
-#
-#     success = game.move_up((0, 3, 0), (1, 0, 0), [])
-#
-#     assert success == True
-#     assert game.render() == "0101/0101/0101/.101#001/001/..1#../..#."
-#
-#
-# def test_valid_moveup_with_1_valid_retraction():
-#     pylos = setup_moveup_scenario()
-#
-#     success = game.move_up((0, 3, 0), (1, 0, 0), [(1, 0, 0)])
-#
-#     assert success == True
-#     assert game.render() == "0101/0101/0101/.101#.01/001/..1#../..#."
+def test_valid_moveup_with_0_retraction():
+    game = setup_moveup_scenario()
+
+    success = game.move_up((0, 3, 0), (1, 0, 0), [])
+
+    assert success == True
+    assert game.render() == "0101/0101/0101/.101#001/001/..1#../..#."
+
+
+def test_valid_moveup_with_1_valid_retraction():
+    game = setup_moveup_scenario()
+
+    print(game.render())
+    success = game.move_up((0, 3, 0), (1, 0, 0), [(1, 0, 0)])
+    print(game.render())
+
+    assert success == True
+    assert game.render() == "0101/0101/0101/.101#.01/001/..1#../..#."
+
+
 #
 #
 # def test_valid_moveup_with_1_invalid_retraction_blocked_ball():
@@ -184,7 +194,7 @@ def test_valid_upmove():
 # def test_get_moveup_locations():
 #     game = Pylos()
 #
-#     fill_layer(pylos, 0)
+#     fill_layer(game, 0)
 #
 #     actual = list(game.get_moveup_locations((0, 0, 0)))
 #
@@ -197,23 +207,25 @@ def test_valid_upmove():
 #     ]
 #
 #
-# def setup_moveup_scenario():
-#     game = Pylos()
-#
-#     fill_layer(pylos, 0)
-#
-#     game.move_from_reserve((1, 0, 1))
-#     game.move_from_reserve((1, 0, 2))
-#
-#     game.move_from_reserve((1, 1, 1))
-#     game.move_from_reserve((1, 1, 2))
-#
-#     game.move_from_reserve((1, 1, 0))
-#     game.move_from_reserve((1, 2, 2))
-#
-#     assert game.render() == "0101/0101/0101/0101#.01/001/..1#../..#."
-#
-#     return pylos
+def setup_moveup_scenario():
+    game = Pylos()
+
+    fill_layer(game, 0)
+
+    game.move_from_reserve((1, 0, 1))
+    game.move_from_reserve((1, 0, 2))
+
+    game.move_from_reserve((1, 1, 1))
+    game.move_from_reserve((1, 1, 2))
+
+    game.move_from_reserve((1, 1, 0))
+    game.move_from_reserve((1, 2, 2))
+
+    assert game.render() == "0101/0101/0101/0101#.01/001/..1#../..#."
+
+    return game
+
+
 #
 #
 # def test_layer0_invalid_move_already_occupied():
@@ -305,18 +317,18 @@ def test_valid_upmove():
 #
 #     assert game.get_winner() == None
 #
-#     fill_layer(pylos, 0)
-#     fill_layer(pylos, 1)
-#     fill_layer(pylos, 2)
-#     fill_layer(pylos, 3)
+#     fill_layer(game, 0)
+#     fill_layer(game, 1)
+#     fill_layer(game, 2)
+#     fill_layer(game, 3)
 #
 #     assert game.get_winner() == 1
 #
 #
-# def fill_layer(pylos, layer_num):
-#     for row in range(4 - layer_num):
-#         for col in range(4 - layer_num):
-#             game.move_from_reserve((layer_num, row, col))
+def fill_layer(game, layer_num):
+    for row in range(4 - layer_num):
+        for col in range(4 - layer_num):
+            game.move_from_reserve((layer_num, row, col))
 #
 #
 # def test_is_valid_from_position_true_when_none():
@@ -337,7 +349,7 @@ def test_valid_upmove():
 # def test_is_valid_from_position_false_when_blocked():
 #     game = Pylos()
 #
-#     fill_layer(pylos, 0)
+#     fill_layer(game, 0)
 #
 #     assert game.is_valid_from_position((0, 0, 0))
 #     assert game.is_valid_from_position((0, 1, 0))
@@ -360,7 +372,7 @@ def test_valid_upmove():
 # def test_is_valid_to_position_false_when_occupied():
 #     game = Pylos()
 #
-#     fill_layer(pylos, 0)
+#     fill_layer(game, 0)
 #
 #     assert not game.is_valid_to_position((0, 0, 0), (0, 0, 0))
 #

@@ -50,6 +50,7 @@ class Actions:
 class Pylos:
     phase: int
     actions: Actions
+    allow_retractions: bool
 
     def __init__(self):
         self.reserve = [15, 15]
@@ -59,7 +60,7 @@ class Pylos:
         self.initialise_turn()
 
     def state(self):
-        return self.layers, self.phase, self.current_turn_actions
+        return self.layers, self.phase, self.actions
 
     def create_layer(self, size):
         return [[None for _ in range(size)] for _ in range(size)]
@@ -67,6 +68,7 @@ class Pylos:
     def initialise_turn(self):
         self.phase = PHASE_SOURCE_LOCATION
         self.actions = Actions()
+        self.allow_retractions = False
 
     def move(self, location=None):
         if self.phase == PHASE_SOURCE_LOCATION:
@@ -101,6 +103,8 @@ class Pylos:
         self._set(target, self.current_player)
         self.reserve[self.current_player] -= 1
         self.phase = PHASE_RETRACT1
+        if self.part_of_square(target, self.current_player):
+            self.allow_retractions = True
 
         return target
 
@@ -144,9 +148,7 @@ class Pylos:
         return location
 
     def is_valid_retract(self, location):
-        return self._get(
-            location) == self.current_player and location != self.actions.target and not self.is_supporting_ball(
-            location)
+        return self._get(location) == self.current_player and self.allow_retractions and not self.is_supporting_ball(location)
 
     def is_valid_source(self, from_location):
         if from_location is None and self.reserve[self.current_player] > 0:
@@ -181,6 +183,7 @@ class Pylos:
         actual_retract2 = self.move(retract2)
 
         print("done playing turn", source, target, retract1, retract2)
+        print("done playing turn", actual_source, actual_target, actual_retract1, actual_retract2)
         return (source, target, retract1, retract2) == (actual_source, actual_target, actual_retract1, actual_retract2)
 
     def can_take_ball_from(self, location):
@@ -243,7 +246,6 @@ class Pylos:
                self.layers[layer - 1][row][col + 1] is not None and self.layers[layer - 1][row + 1][col + 1] is not None
 
     def part_of_square(self, location, player):
-        self._set(location, player)
         layer_idx, row, col = location
         layer = self.layers[layer_idx]
         rows = len(layer)
@@ -258,7 +260,6 @@ class Pylos:
                 pos4 = self._get((layer_idx, r + 1, c + 1))
                 if pos1 == pos2 == pos3 == pos4 == player:
                     square = True
-        self._clear(location)
 
         return square
 
