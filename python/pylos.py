@@ -227,12 +227,6 @@ class Pylos:
 
         return (source, target, retract1, retract2) == (actual_source, actual_target, actual_retract1, actual_retract2)
 
-    def can_take_ball_from(self, location):
-        if self._get(location) != self.current_player:
-            return False
-
-        return not self.is_supporting_ball(location)
-
     def _get(self, location):
         layer, row, col = location
         return self.layers[layer][row][col]
@@ -241,9 +235,6 @@ class Pylos:
         r1 = None if len(retractions) < 1 else retractions[0]
         r2 = None if len(retractions) < 2 else retractions[1]
         return self.play_turn(source, target, r1, r2)
-
-    def has_current_player_ball_at(self, location):
-        return self._get(location) == self.current_player
 
     def can_place_ball_at(self, to_location):
         if not self.is_free_location(to_location):
@@ -304,28 +295,6 @@ class Pylos:
 
         return square
 
-    def retractions_valid(self, to_location, retractions):
-        memory = [to_location]
-
-        self._set(to_location, self.current_player)
-
-        # check validity
-        valid = True
-        for r in retractions:
-            if self.can_take_ball_from(r):
-                self._clear(r)
-                memory.append(r)
-            else:
-                valid = False
-
-        # revert changes
-        for r in memory:
-            self._set(r, self.current_player)
-
-        self._clear(to_location)
-
-        return valid
-
     def is_supporting_ball(self, location):
         layer_idx, row, col = location
         if layer_idx + 1 >= len(self.layers):  # top layer can never support anything
@@ -347,13 +316,6 @@ class Pylos:
         return "#".join(["/".join(["".join(["." if c is None else str(c) for c in row]) for row in layer]) for layer in
                          self.layers])
 
-    def current_player_has_free_balls(self):
-        for ball in self.get_current_player_balls():
-            if not self.is_supporting_ball(ball):
-                return True
-
-        return False
-
     def get_all_locations(self) -> Iterable[Location]:
         for l, layer in enumerate(self.layers):
             for r, row in enumerate(layer):
@@ -365,7 +327,3 @@ class Pylos:
             if self._get(location) == self.current_player:
                 yield location
 
-    def can_place_balls(self):
-        for location in self.get_all_locations():
-            if self.can_place_ball_at(location):
-                return True
