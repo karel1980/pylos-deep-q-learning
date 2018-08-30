@@ -1,9 +1,6 @@
-import sys
 import gym
 import gym.spaces
-import numpy as np
-import pylos_env
-
+from nose.tools import assert_equal
 
 def test_sanity():
     assert gym != None

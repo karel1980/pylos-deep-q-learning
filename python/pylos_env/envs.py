@@ -85,18 +85,6 @@ class PylosEnv(gym.Env):
 
         return self.state_from_pylos(), reward, self.done, info
 
-    #TODO: add tests
-    def first_available_move(self):
-        if self.pylos.reserve[self.pylos.current_player] > 0:
-            valid_positions = filter(lambda pos: self.pylos.is_valid_to_position(None, pos), self.pylos.get_all_positions())
-            return None, next(valid_positions)
-
-        balls = self.pylos.get_current_player_balls()
-        for position in balls:
-            # look for first available square which is not above `position`
-            for to_position in self.pylos.get_moveup_locations(position):
-                return position, to_position
-
     def map_action_space_to_game_coordinates(self, action_value):
         if action_value < 16:
             return 0, int(action_value / 4), action_value % 4
