@@ -5,7 +5,6 @@ PHASE_TARGET_LOCATION = 1
 PHASE_RETRACT1 = 2
 PHASE_RETRACT2 = 3
 
-
 class Location:
     layer: int
     row: int

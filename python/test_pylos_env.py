@@ -1,13 +1,18 @@
 import gym
 import gym.spaces
-from nose.tools import assert_equal
+from nose.tools import assert_is_not_none, assert_equal
+import pylos_env
+import numpy as np
+
 
 def test_sanity():
-    assert gym != None
-
+    assert_is_not_none(gym)
+    assert_is_not_none(pylos_env)
 
 def test_make_env():
     env = gym.envs.make('Pylos-v0')
+
+    assert_is_not_none(env)
 
 
 def test_reset_env():
@@ -15,8 +20,8 @@ def test_reset_env():
 
     state = env.reset()
 
-    assert state['current_player'] == 0
-    assert state['board'][0][0] == 0
+    assert_equal(state[0], 0)  # current_player
+    assert np.array_equal(state[1:5], np.array([1, 0, 0, 0]))
 
 
 def test_single_move():

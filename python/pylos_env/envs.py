@@ -2,6 +2,7 @@ import gym
 import numpy as np
 from gym import spaces
 
+import pylos
 from pylos import Pylos
 
 
@@ -13,26 +14,36 @@ class PylosEnv(gym.Env):
         self.done = False
 
         self.reset()
-        # discrete 1 = which ball to move (0-29 = from one of the board positions, 30 = from the player's reserve)
-        # discrete 2 = where to move the ball
-        # discrete 3 = first ball to retract (30 = none)
-        # discrete 4 = second ball to retract (30 = none)
 
-        # Initially only 1 out of 31*31*31 moves will be valid; perhaps a better representation is needed?
-        self.action_space = spaces.MultiDiscrete([31, 30, 31, 31])
+        # each move consists of 31 possible values (0-29 meaning one of the board positions,
+        # 30 meaning 'none' or 'reserve' depending on the current phase)
+        self.action_space = spaces.Discrete(31)
 
     def state_from_pylos(self):
-        state = dict()
-        state['current_player'] = self.pylos.current_player
-        state['board'] = np.zeros((30, 3))
-        board_row = 0
-        for layer in self.pylos.layers:
-            for row in layer:
-                for col in row:
-                    if col != None: state['board'][board_row][col + 1] = 1
-                    board_row += 1
+        # current player (0/1) -> consider 2 nodes?
+        net_inputs = [self.pylos.current_player]
 
-        return state
+        # game phase
+        net_inputs += [
+            1 if self.pylos.phase == pylos.PHASE_SOURCE_LOCATION else 0,
+            1 if self.pylos.phase == pylos.PHASE_TARGET_LOCATION else 0,
+            1 if self.pylos.phase == pylos.PHASE_RETRACT1 else 0,
+            1 if self.pylos.phase == pylos.PHASE_RETRACT2 else 0
+        ]
+
+        # board (3 nodes per board position
+        net_inputs += [ 1 if ball_owner is None else 0 for ball_owner in self.flat_board() ]
+        net_inputs += [ 1 if ball_owner == 0 else 0 for ball_owner in self.flat_board() ]
+        net_inputs += [ 1 if ball_owner == 1 else 0 for ball_owner in self.flat_board() ]
+
+        return np.array(net_inputs)
+
+    def flat_board(self):
+        result = []
+        for l in self.pylos.layers:
+            for r in l:
+                result += r
+        return result
         
     def reset(self):
         self.done = False
