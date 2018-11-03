@@ -5,6 +5,11 @@ PHASE_TARGET_LOCATION = 1
 PHASE_RETRACT1 = 2
 PHASE_RETRACT2 = 3
 
+
+class MoveException(Exception):
+    pass
+
+
 class Location:
     layer: int
     row: int
@@ -26,6 +31,9 @@ class Location:
     def __str__(self):
         return "location(%d, %d, %d)" % (self.layer, self.row, self.col)
 
+    def __repr__(self):
+        return str(self)
+
     def is_directly_below(self, other):
         return (self.layer + 1 == other.layer) and (self.row in range(other.row - 1, other.row + 2)) and (
                 self.col in range(other.col - 1, other.col + 2))
@@ -37,6 +45,15 @@ class Location:
             return self.row
         if idx == 2:
             return self.col
+
+
+def tuple_to_location(tup):
+    if tup is None:
+        return None
+
+    layer, row, col = tup
+    return Location(layer, row, col)
+
 
 class Actions:
     source: Location
@@ -58,18 +75,26 @@ class Actions:
 
 
 class Pylos:
+    actions: Actions
+    current_player: int
+    reserve: List[int]
+    phase: int
+    allow_retractions: bool
+    winner: int
 
     def __init__(self):
-        self.layers: List[Layer] = [self.create_layer(4), self.create_layer(3), self.create_layer(2),
-                                    self.create_layer(1)]
+        self.layers: List[List[List[int]]] = [
+            self.create_layer(4),
+            self.create_layer(3),
+            self.create_layer(2),
+            self.create_layer(1)]
 
-        self.current_player: int = 0
+        self.current_player = 0
         self.reserve: List[int] = [15, 15]
         self.layers: List[List[List[int]]]
         self.phase: int = PHASE_SOURCE_LOCATION
-        self.actions: Actions
-        self.allow_retractions: bool
-        self.winner: int = None
+        self.allow_retractions = False
+        self.winner = None
         self.initialise_turn()
 
     def state(self):
@@ -84,22 +109,86 @@ class Pylos:
         self.allow_retractions = False
 
     def move(self, location=None):
-        if self.winner is not None:
-            return None
+        location = tuple_to_location(location)
+
+        self.validate_move(location)
 
         if self.phase == PHASE_SOURCE_LOCATION:
-            return self.handle_source_move(location)
+            self.handle_source_move(location)
 
-        if self.phase == PHASE_TARGET_LOCATION:
-            return self.handle_target_move(location)
+        elif self.phase == PHASE_TARGET_LOCATION:
+            self.handle_target_move(location)
 
-        if self.phase == PHASE_RETRACT1:
-            return self.handle_retract1(location)
+        elif self.phase == PHASE_RETRACT1:
+            self.handle_retract1(location)
 
-        if self.phase == PHASE_RETRACT2:
-            result = self.handle_retract2(location)
+        elif self.phase == PHASE_RETRACT2:
+            self.handle_retract2(location)
             self.winner = self.determine_winner()
-            return result
+
+    def validate_move(self, location):
+        location = tuple_to_location(location)
+
+        if self.game_over():
+            raise MoveException('game is over')
+
+        if self.phase == PHASE_SOURCE_LOCATION:
+            self.validate_source_move(location)
+
+        elif self.phase == PHASE_TARGET_LOCATION:
+            self.validate_target_move(location)
+
+        else:
+            self.validate_retract_move(location)
+
+    def validate_source_move(self, location):
+        if location is None:
+            return
+
+        if self._get(location) is None:
+            raise MoveException('source location contains no ball')
+
+        if self._get(location) != self.current_player:
+            raise MoveException('you can only move your own balls')
+
+        self.validate_ball_at_location_can_be_moved_up(location)
+
+    def is_valid_move(self, location):
+        location = tuple_to_location(location)
+
+        try:
+            self.validate_move(location)
+            return True
+        except MoveException:
+            return False
+
+    def validate_ball_at_location_can_be_moved_up(self, location: Location):
+        if self.has_ball_directly_above(location):
+            raise MoveException('ball is blocked by higher ball', location)
+
+        supported_free_locations = self.get_supported_free_locations()
+        higher_targets = list(filter(lambda l: l[0] > location[0], supported_free_locations))
+
+        for target in higher_targets:
+            if not location.is_directly_below(target):
+                return
+
+        raise MoveException('there are no possible targets for source location', location)
+
+    def get_supported_free_locations(self):
+        return filter(lambda l: self.has_occupied_square_below(l), self.get_free_locations())
+
+    def game_over(self):
+        return self.winner is not None
+
+    def has_occupied_square_below(self, location: Location):
+        layer, row, col = location
+        if layer == 0:
+            return True
+        return self._get(Location(layer - 1, row, col)) is not None and \
+               self._get(Location(layer - 1, row, col + 1)) is not None and \
+               self._get(Location(layer - 1, row + 1, col)) is not None and \
+               self._get(Location(layer - 1, row + 1, col + 1)) is not None
 
     def determine_winner(self):
         # this is determined after the last move of a turn.
@@ -115,7 +204,7 @@ class Pylos:
 
         # current player has no balls left -> can only try to move ball up
         # check if player can move ball up
-        for source in filter(lambda ball: not self.is_supporting_ball(ball), self.get_current_player_balls()):
+        for source in filter(lambda ball: not self.has_ball_directly_above(ball), self.get_current_player_balls()):
             for target in filter(lambda location: self.is_free_location(location), self.get_all_locations()):
                 if not source.is_directly_below(target):
                     return None
@@ -124,9 +213,6 @@ class Pylos:
         return 1 - self.current_player
 
     def handle_source_move(self, source: Location):
-        if not self.is_valid_source(source):
-            source = self.generate_valid_source()
-
         self.actions.source = source
         if source is not None:
             self.reserve[self.current_player] -= 1
@@ -136,26 +222,14 @@ class Pylos:
         return source
 
     def handle_target_move(self, target):
-        if not self.is_valid_target(target):
-            target = self.generate_valid_target()
-
         self.actions.target = target
         self._set(target, self.current_player)
         self.reserve[self.current_player] -= 1
         self.phase = PHASE_RETRACT1
-        if self.part_of_square(target, self.current_player):
+        if self.is_part_of_square_belonging_to_same_player(target, self.current_player):
             self.allow_retractions = True
 
         return target
-
-    def generate_valid_source(self):
-        if self.reserve[self.current_player] > 0:
-            return None
-
-        return next(filter(lambda location: self.is_valid_source(location), self.all_locations()))
-
-    def generate_valid_target(self):
-        return next(filter(lambda location: self.is_valid_target(location), self.all_locations()))
 
     def all_locations(self):
         for l in range(len(self.layers)):
@@ -164,85 +238,56 @@ class Pylos:
                     yield Location(l, r, c)
 
     def handle_retract1(self, location):
+        self._do_retract(location)
         self.phase = PHASE_RETRACT2
-        return self._do_retract(location)
 
     def handle_retract2(self, location):
-        location = self._do_retract(location)
+        self._do_retract(location)
         self.initialise_turn()
         self.current_player = 1 - self.current_player
-        return location
 
     def _do_retract(self, location):
         if location is None:
-            return None
-
-        if not self.is_valid_retract(location):
-            return None
+            return
 
         self._clear(location)
         self.reserve[self.current_player] += 1
 
         self.actions.retract1 = location
-        return location
+        return
 
-    def is_valid_retract(self, location):
+    def validate_retract_move(self, location):
+        if location is None:
+            return
+
         if not self.allow_retractions:
-            return False
+            raise MoveException('retractions are not allowed because you did just create a square')
 
-        return self._get(location) == self.current_player and not self.is_supporting_ball(location)
+        if self._get(location) != self.current_player:
+            raise MoveException('you can only retract your own balls')
 
-    def is_valid_source(self, from_location):
-        if from_location is None and self.reserve[self.current_player] > 0:
-            return True
+        if self.has_ball_directly_above(location):
+            raise MoveException('retraction not possible when there are balls on top of location')
 
-        layer, row, col = from_location
+    def validate_target_move(self, target):
+        if target is None:
+            raise MoveException('target must not be None')
 
-        if self.layers[layer][row][col] != self.current_player:
-            return False
+        if self._get(target) is not None:
+            raise MoveException('target is not empty')
 
-        return not self.is_supporting_ball(from_location)
+        if not self.is_fully_supported(target):
+            raise MoveException('target location is not fully supported')
 
-    def is_valid_target(self, target):
-        if self.actions.source == target:
-            return False
+        if self.actions.source is not None:
+            if self.actions.source.is_directly_below(target):
+                raise MoveException('target location is above source location')
 
-        return self.can_place_ball_at(target)
-
-    def move_from_reserve(self, to_location, retractions=[]):
-        r1 = None if len(retractions) < 1 else retractions[0]
-        r2 = None if len(retractions) < 2 else retractions[1]
-        return self.play_turn(None, to_location, r1, r2)
-
-    def play_turn(self, source, target, retract1, retract2):
-        source = None if source is None else Location(source[0], source[1], source[2])
-        target = None if target is None else Location(target[0], target[1], target[2])
-        retract1 = None if retract1 is None else Location(retract1[0], retract1[1], retract1[2])
-        retract2 = None if retract2 is None else Location(retract2[0], retract2[1], retract2[2])
-        actual_source = self.move(source)
-        actual_target = self.move(target)
-        actual_retract1 = self.move(retract1)
-        actual_retract2 = self.move(retract2)
-
-        return (source, target, retract1, retract2) == (actual_source, actual_target, actual_retract1, actual_retract2)
+        return True
 
     def _get(self, location):
         layer, row, col = location
         return self.layers[layer][row][col]
-
-    def move_up(self, source, target, retractions=[]):
-        r1 = None if len(retractions) < 1 else retractions[0]
-        r2 = None if len(retractions) < 2 else retractions[1]
-        return self.play_turn(source, target, r1, r2)
-
-    def can_place_ball_at(self, to_location):
-        if not self.is_free_location(to_location):
-            return False
-
-        if not self.support_complete(to_location):
-            return False
-
-        return True
 
     def _set(self, location, value):
         layer, row, col = location
@@ -267,7 +312,7 @@ class Pylos:
     def is_free_location(self, location):
         return self.valid_location(location) and self._get(location) is None
 
-    def support_complete(self, location):
+    def is_fully_supported(self, location):
         layer, row, col = location
 
         if layer == 0:
@@ -276,7 +321,7 @@ class Pylos:
         return self.layers[layer - 1][row][col] is not None and self.layers[layer - 1][row + 1][col] is not None and \
                self.layers[layer - 1][row][col + 1] is not None and self.layers[layer - 1][row + 1][col + 1] is not None
 
-    def part_of_square(self, location, player):
+    def is_part_of_square_belonging_to_same_player(self, location, player):
         layer_idx, row, col = location
         layer = self.layers[layer_idx]
         rows = len(layer)
@@ -294,7 +339,7 @@ class Pylos:
 
         return square
 
-    def is_supporting_ball(self, location):
+    def has_ball_directly_above(self, location):
         layer_idx, row, col = location
         if layer_idx + 1 >= len(self.layers):  # top layer can never support anything
             return False
@@ -321,8 +366,10 @@ class Pylos:
                 for c in range(len(row)):
                     yield Location(l, r, c)
 
+    def get_free_locations(self) -> Iterable[Location]:
+        return filter(lambda loc: self._get(loc) is None, self.get_all_locations())
+
     def get_current_player_balls(self) -> Iterable[Location]:
         for location in self.get_all_locations():
             if self._get(location) == self.current_player:
                 yield location
-
